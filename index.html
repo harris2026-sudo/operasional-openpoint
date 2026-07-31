@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Operasional — Open Point</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --navy:#1F3864;
+    --accent:#2E5FA3;
+    --hilite:#D6E4F0;
+    --zebra:#F2F2F2;
+    --bg:#EEF2F7;
+    --surface:#FFFFFF;
+    --border:#DDE4EC;
+    --text:#222;
+    --text-secondary:#5b6572;
+    --text-muted:#8a93a0;
+    --green-bg:#C6EFCE; --green-fg:#1E7A34;
+    --yellow-bg:#FFEB9C; --yellow-fg:#7A6000;
+    --blue-bg:#BDD7EE; --blue-fg:#1F4E79;
+    --red-bg:#FFC7CE; --red-fg:#9C0006;
+    --grey-bg:#E7E6E6; --grey-fg:#555555;
+    --gold-bg:#FFD966; --gold-fg:#7F6000;
+    font-family: Arial, "Helvetica Neue", sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); padding:18px;}
+  .wrap{max-width:1220px; margin:0 auto;}
+
+  header{background:linear-gradient(135deg,var(--navy),#274b82); color:#fff; padding:18px 22px; border-radius:12px; margin-bottom:16px; box-shadow:0 4px 16px rgba(31,56,100,.25); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;}
+  header h1{margin:0 0 3px; font-size:19px;}
+  header p{margin:0; font-size:12px; opacity:.85;}
+  .storage-badge{display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:10.5px; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,.15); color:#fff;}
+  .storage-dot{width:7px; height:7px; border-radius:50%; background:#6FCF97; flex:none;}
+  .storage-dot.saving{background:var(--gold-bg); animation:pulse 1s infinite;}
+  .storage-dot.error{background:#ff6b6b;}
+  @keyframes pulse{50%{opacity:.35;}}
+
+  .config-banner{background:var(--red-bg); color:var(--red-fg); border-radius:10px; padding:10px 14px; font-size:12.5px; margin-bottom:16px; display:none; align-items:center; gap:8px;}
+  .config-banner.show{display:flex;}
+
+  .toast-alert{position:fixed; top:16px; right:16px; width:320px; max-width:90vw; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(31,56,100,.25); border-left:4px solid var(--gold-fg); z-index:80; overflow:hidden; opacity:0; transform:translateY(-8px); transition:opacity .25s ease, transform .25s ease;}
+  .toast-alert.show{opacity:1; transform:translateY(0);}
+  .toast-alert.danger{border-left-color:var(--red-fg);}
+  .toast-head{display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--hilite); font-size:12.5px; font-weight:bold; color:var(--navy);}
+  .toast-head button{border:none; background:none; cursor:pointer; font-size:13px; color:var(--navy);}
+  .toast-body{padding:8px 12px; max-height:220px; overflow-y:auto;}
+  .toast-item{font-size:12px; padding:6px 0; border-bottom:1px solid var(--border); color:var(--text-secondary);}
+  .toast-item:last-child{border-bottom:none;}
+  .toast-item b{color:var(--text);}
+
+  .metrics{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px;}
+  .metric{background:var(--surface); border-radius:10px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,.08); border-left:4px solid var(--accent);}
+  .metric.overdue{border-left-color:var(--red-fg);}
+  .metric.week{border-left-color:var(--gold-fg);}
+  .metric.closed{border-left-color:var(--green-fg);}
+  .metric .label{font-size:11.5px; color:var(--text-secondary); display:flex; align-items:center; gap:5px; margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px;}
+  .metric .value{font-size:24px; font-weight:bold; color:var(--navy);}
+
+  .panel{background:var(--surface); border-radius:12px; padding:16px 18px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .panel h2{font-size:13.5px; font-weight:bold; margin:0 0 12px; color:var(--navy);}
+  .chart-row{display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:18px;}
+  @media (max-width:900px){.chart-row{grid-template-columns:1fr;}}
+  .chart-box{position:relative; height:190px;}
+  .legend{display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:11.5px; color:var(--text-secondary);}
+  .legend span{display:flex; align-items:center; gap:5px;}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+  .priority-list{display:flex; flex-direction:column; gap:8px; justify-content:center; height:190px;}
+  .priority-row{display:flex; align-items:center; gap:8px; font-size:12.5px;}
+  .priority-row .pname{width:64px; flex:none; font-weight:bold;}
+  .priority-row .pbar-wrap{flex:1; background:var(--zebra); border-radius:5px; height:10px; overflow:hidden;}
+  .priority-row .pbar{height:100%; border-radius:5px;}
+  .priority-row .pcount{width:22px; text-align:right; color:var(--text-secondary);}
+
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
+  select, input[type=text], input[type=date]{height:36px; border:1px solid #c7d3e0; border-radius:6px; background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; font-family:inherit;}
+  select:focus, input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(46,95,163,.15);}
+  #search{flex:1; min-width:160px;}
+  .btn{height:36px; padding:0 13px; border-radius:6px; border:none; font-size:12.5px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
+  .btn:active{transform:scale(.96);}
+  .btn-primary{background:var(--accent); color:#fff;}
+  .btn-primary:hover{background:var(--navy); box-shadow:0 5px 12px rgba(46,95,163,.3);}
+  .btn-ghost{background:var(--hilite); color:var(--navy);}
+  .btn-ghost:hover{background:#c3d7ee;}
+  .btn-outline{background:#fff; color:var(--navy); border:1.5px solid var(--hilite);}
+  .btn-outline:hover{background:var(--hilite);}
+
+  .priority-chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .pchip{font-size:11px; font-weight:bold; padding:4px 10px; border-radius:20px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{text-align:left; font-weight:bold; color:#fff; background:var(--accent); font-size:11.5px; padding:9px 10px; white-space:nowrap;}
+  thead th:first-child{border-top-left-radius:6px;}
+  thead th:last-child{border-top-right-radius:6px;}
+  tbody td{padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:top;}
+  tbody tr:nth-child(even){background:var(--zebra);}
+  tbody tr:hover{background:var(--hilite) !important;}
+  .ticket-cell{font-family:"Courier New",monospace; font-weight:bold; color:var(--navy); white-space:nowrap;}
+  .topic-cell{font-weight:bold; max-width:200px;}
+  .detail-cell{color:var(--text-secondary); font-size:12px; max-width:230px;}
+  .cat-pill{font-size:11px; padding:3px 9px; border-radius:6px; background:var(--grey-bg); color:var(--grey-fg); border:1px solid #d7d7d7; white-space:nowrap;}
+  .flag-pill, .prio-pill{font-size:11px; padding:3px 10px; border-radius:20px; font-weight:bold; white-space:nowrap; display:inline-block;}
+  .flag-open{background:var(--yellow-bg); color:var(--yellow-fg);}
+  .flag-progress{background:var(--blue-bg); color:var(--blue-fg);}
+  .flag-closed{background:var(--green-bg); color:var(--green-fg);}
+  .prio-low{background:var(--grey-bg); color:var(--grey-fg);}
+  .prio-medium{background:var(--blue-bg); color:var(--blue-fg);}
+  .prio-high{background:var(--gold-bg); color:var(--gold-fg);}
+  .prio-urgent{background:var(--red-bg); color:var(--red-fg);}
+  .due-cell{white-space:nowrap;}
+  .due-overdue{color:var(--red-fg); font-weight:bold;}
+  .due-soon{color:var(--gold-fg); font-weight:bold;}
+  .row-actions{display:flex; gap:2px;}
+  .icon-btn{width:27px; height:27px; border:none; background:transparent; color:var(--text-muted); border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .icon-btn:hover{background:var(--hilite); color:var(--navy);}
+  .icon-btn.del:hover{background:var(--red-bg); color:var(--red-fg);}
+  .empty{text-align:center; padding:36px 20px; color:var(--text-muted); font-size:13px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(10,14,20,.45); display:none; align-items:center; justify-content:center; z-index:60; padding:16px;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--surface); border-radius:12px; width:100%; max-width:480px; padding:22px; max-height:90vh; overflow-y:auto;}
+  .modal h3{margin:0 0 4px; font-size:15px; color:var(--navy);}
+  .modal .ticket-preview{font-size:11.5px; color:var(--text-muted); margin-bottom:14px; font-family:"Courier New",monospace;}
+  .field{margin-bottom:11px;}
+  .field label{display:block; font-size:11.5px; font-weight:bold; color:var(--navy); margin-bottom:4px;}
+  .field input, .field select, .field textarea{width:100%; height:36px; border:1px solid #c7d3e0; border-radius:6px; background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; font-family:inherit;}
+  .field textarea{height:66px; padding:8px 10px; resize:vertical;}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+  .modal-actions .btn-danger{background:var(--red-fg); color:#fff;}
+  .modal-actions .btn-danger:hover{opacity:.9;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>📋 Dashboard Operasional — Open Point</h1>
+      <p>Lacak topik, tindak lanjut, prioritas, dan due date tim secara real-time.</p>
+      <div class="storage-badge"><span class="storage-dot" id="storeDot"></span><span id="storeText">Tersambung ke Google Sheets</span></div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-outline" id="btnExportExcel">📊 Export Excel</button>
+      <button class="btn btn-outline" id="btnExportPdf">🧾 Export PDF</button>
+    </div>
+  </header>
+
+  <div class="config-banner" id="configBanner">⚠️ <span>APPS_SCRIPT_URL belum diisi — data hanya tersimpan sementara di sesi ini. Isi URL Web App Google Apps Script di bagian atas kode (lihat komentar KONFIGURASI) agar data tersimpan permanen di Google Sheets.</span></div>
+
+  <div class="metrics">
+    <div class="metric total"><div class="label">📋 Total open point</div><div class="value" id="mTotal">0</div></div>
+    <div class="metric overdue"><div class="label">⚠️ Overdue</div><div class="value" id="mOverdue">0</div></div>
+    <div class="metric week"><div class="label">🕒 Jatuh tempo 7 hari</div><div class="value" id="mWeek">0</div></div>
+    <div class="metric closed"><div class="label">✅ Closed</div><div class="value" id="mClosed">0</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="chart-row">
+      <div>
+        <h2>Distribusi per kategori</h2>
+        <div class="chart-box"><canvas id="catChart" role="img" aria-label="Grafik batang jumlah open point per kategori"></canvas></div>
+      </div>
+      <div>
+        <h2>Status flag</h2>
+        <div class="chart-box"><canvas id="flagChart" role="img" aria-label="Grafik donat proporsi status"></canvas></div>
+        <div class="legend" id="flagLegend"></div>
+      </div>
+      <div>
+        <h2>Prioritas</h2>
+        <div class="priority-list" id="priorityList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <select id="fCategory"><option value="">Semua kategori</option></select>
+      <select id="fFlag">
+        <option value="">Semua flag</option>
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Closed">Closed</option>
+      </select>
+      <select id="fPriority">
+        <option value="">Semua prioritas</option>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+        <option value="Urgent">Urgent</option>
+      </select>
+      <input type="text" id="search" placeholder="🔍 Cari tiket, topik, detail, atau PIC...">
+      <button class="btn btn-primary" id="btnAdd">➕ Tambah open point</button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Ticket</th><th>Topic</th><th>Category</th><th>Detail</th><th>Flag</th><th>Priority</th><th>PIC/To</th><th>Due date</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="emptyState" style="display:none;">📭<br>Belum ada open point. Klik "Tambah open point" untuk mulai.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modalTitle">Tambah open point</h3>
+    <div class="ticket-preview" id="ticketPreview"></div>
+    <input type="hidden" id="editId">
+    <div class="field"><label>Topic</label><input type="text" id="fTopic" placeholder="Contoh: Migrasi server backup"></div>
+    <div class="field-row">
+      <div class="field"><label>Category</label><input type="text" id="fCategoryInput" list="catList" placeholder="Operasional">
+        <datalist id="catList"></datalist>
+      </div>
+      <div class="field"><label>Priority</label>
+        <select id="fPriorityInput">
+          <option value="Low">Low</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Detail</label><textarea id="fDetail" placeholder="Deskripsi singkat isu / tindak lanjut"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Flag</label>
+        <select id="fFlagInput">
+          <option value="Open">Open</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+      <div class="field"><label>PIC/To</label><input type="text" id="fPic" placeholder="Nama penanggung jawab"></div>
+    </div>
+    <div class="field"><label>Due date</label><input type="date" id="fDue"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnDeleteInModal" style="display:none; margin-right:auto;">🗑 Hapus</button>
+      <button class="btn btn-ghost" id="btnCancel">Batal</button>
+      <button class="btn btn-primary" id="btnSave">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   KONFIGURASI BACKEND STORAGE (Google Sheets via Apps Script)
+   1. Deploy backend "Code.gs" (file terpisah yang disertakan)
+      sebagai Web App — lihat panduan lengkap di dalam Code.gs.
+   2. Copy URL Web App-nya (format:
+      https://script.google.com/macros/s/XXXX/exec)
+   3. Paste ke APPS_SCRIPT_URL di bawah ini.
+   Selama URL ini kosong, dashboard tetap bisa dipakai tapi data
+   HANYA tersimpan sementara di sesi browser saat ini (hilang saat
+   direfresh) — banner peringatan akan muncul di atas dashboard.
+   ============================================================ */
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI72vPqHaXqxniiGLzKnC2HPBjd5aJ_FY2loKEcB_8UBjXiI59tuUGBb1IGqj8gg/exec"; // <-- WAJIB DIISI setelah deploy Apps Script
+
+const LIST_KEY = "openpoint:entries";
+let entries = [];
+let filters = { category:"", flag:"", priority:"", search:"" };
+let catChart, flagChart;
+let notifShown = false;
+
+/* ---------------- STORAGE LAYER ---------------- */
+async function gsGet(key){
+  const res = await fetch(`${APPS_SCRIPT_URL}?action=get&key=${encodeURIComponent(key)}&_t=${Date.now()}`, { cache:'no-store' });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if(data.error === 'not_found') throw new Error('not found');
+  if(data.error) throw new Error(data.message || data.error);
+  return { key:data.key, value:data.value };
+}
+async function gsSet(key, value){
+  const url = `${APPS_SCRIPT_URL}?action=set&key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}&_t=${Date.now()}`;
+  const res = await fetch(url, { cache:'no-store' });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if(data.error) throw new Error(data.message || data.error);
+  return { key:data.key, value:data.value };
+}
+
+function isConfigured(){ return !!APPS_SCRIPT_URL; }
+
+function showConfigBanner(){
+  document.getElementById('configBanner').classList.toggle('show', !isConfigured());
+}
+
+function setSyncing(state){
+  const dot = document.getElementById('storeDot');
+  const txt = document.getElementById('storeText');
+  dot.classList.remove('saving','error');
+  if(!isConfigured()){ txt.textContent = 'Mode sementara (belum tersambung Sheets)'; dot.classList.add('error'); return; }
+  if(state === 'saving'){ dot.classList.add('saving'); txt.textContent = 'Menyimpan ke Google Sheets...'; }
+  else if(state === 'error'){ dot.classList.add('error'); txt.textContent = 'Gagal terhubung ke Google Sheets'; }
+  else { txt.textContent = 'Tersambung ke Google Sheets'; }
+}
+
+function uid(){ return 'op_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+
+function nextTicket(){
+  let max = 0;
+  entries.forEach(e => {
+    const m = /^OP-(\d+)$/.exec(e.ticket || '');
+    if(m){ const n = parseInt(m[1],10); if(n > max) max = n; }
+  });
+  return 'OP-' + String(max + 1).padStart(4,'0');
+}
+
+async function loadEntries(){
+  if(isConfigured()){
+    try{
+      const res = await gsGet(LIST_KEY);
+      entries = res.value ? JSON.parse(res.value) : [];
+      setSyncing('ok');
+    }catch(e){
+      entries = [];
+      setSyncing('ok'); // key belum pernah dibuat = wajar, anggap kosong
+    }
+  } else {
+    entries = [];
+  }
+  showConfigBanner();
+  render();
+  checkDueNotifications();
+}
+
+async function saveEntries(){
+  if(!isConfigured()){ showConfigBanner(); return; }
+  setSyncing('saving');
+  try{
+    await gsSet(LIST_KEY, JSON.stringify(entries));
+    setSyncing('ok');
+  }catch(e){
+    setSyncing('error');
+  }
+}
+
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(dateStr + 'T00:00:00');
+  return Math.round((due - today) / 86400000);
+}
+
+function formatDate(dateStr){
+  if(!dateStr) return '-';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function dueStatus(e){
+  if(e.flag === 'Closed') return null;
+  const d = daysUntil(e.due);
+  if(d === null) return null;
+  if(d < 0) return 'overdue';
+  if(d <= 3) return 'soon';
+  return null;
+}
+
+function flagClass(flag){
+  if(flag === 'Open') return 'flag-open';
+  if(flag === 'In Progress') return 'flag-progress';
+  return 'flag-closed';
+}
+function prioClass(p){
+  if(p === 'Low') return 'prio-low';
+  if(p === 'Medium') return 'prio-medium';
+  if(p === 'High') return 'prio-high';
+  return 'prio-urgent';
+}
+
+function getCategories(){
+  const set = new Set(["Operasional","Finance","IT","HR"]);
+  entries.forEach(e => { if(e.category) set.add(e.category); });
+  return Array.from(set);
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function populateCategoryControls(){
+  const cats = getCategories();
+  const fCategory = document.getElementById('fCategory');
+  const current = fCategory.value;
+  fCategory.innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  fCategory.value = current;
+  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${escapeHtml(c)}">`).join('');
+}
+
+function getFiltered(){
+  return entries.filter(e => {
+    if(filters.category && e.category !== filters.category) return false;
+    if(filters.flag && e.flag !== filters.flag) return false;
+    if(filters.priority && e.priority !== filters.priority) return false;
+    if(filters.search){
+      const q = filters.search.toLowerCase();
+      const hay = `${e.ticket} ${e.topic} ${e.detail} ${e.pic}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a,b) => {
+    if(!a.due) return 1;
+    if(!b.due) return -1;
+    return a.due.localeCompare(b.due);
+  });
+}
+
+function renderMetrics(){
+  const total = entries.length;
+  const overdue = entries.filter(e => dueStatus(e) === 'overdue').length;
+  const week = entries.filter(e => {
+    if(e.flag === 'Closed') return false;
+    const d = daysUntil(e.due);
+    return d !== null && d >= 0 && d <= 7;
+  }).length;
+  const closed = entries.filter(e => e.flag === 'Closed').length;
+  document.getElementById('mTotal').textContent = total;
+  document.getElementById('mOverdue').textContent = overdue;
+  document.getElementById('mWeek').textContent = week;
+  document.getElementById('mClosed').textContent = closed;
+}
+
+function renderCharts(){
+  const cats = getCategories();
+  const catCounts = cats.map(c => entries.filter(e => e.category === c).length);
+  const flagLabels = ['Open','In Progress','Closed'];
+  const flagCounts = flagLabels.map(f => entries.filter(e => e.flag === f).length);
+  const flagColors = ['#7A6000','#1F4E79','#1E7A34'];
+  const flagBg = ['#FFEB9C','#BDD7EE','#C6EFCE'];
+
+  const catCtx = document.getElementById('catChart');
+  if(catChart) catChart.destroy();
+  catChart = new Chart(catCtx, {
+    type:'bar',
+    data:{ labels:cats, datasets:[{ data:catCounts, backgroundColor:'#2E5FA3', borderRadius:4, maxBarThickness:30 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.parsed.y + ' open point' } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(90,100,120,0.12)' } }, x:{ grid:{ display:false } } } }
+  });
+
+  const flagCtx = document.getElementById('flagChart');
+  if(flagChart) flagChart.destroy();
+  flagChart = new Chart(flagCtx, {
+    type:'doughnut',
+    data:{ labels:flagLabels, datasets:[{ data:flagCounts, backgroundColor:flagBg, borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => ctx.label + ': ' + ctx.parsed } } } }
+  });
+  const totalFlags = flagCounts.reduce((a,b)=>a+b,0) || 1;
+  document.getElementById('flagLegend').innerHTML = flagLabels.map((l,i) =>
+    `<span><i style="background:${flagColors[i]}"></i>${l} ${flagCounts[i]} (${Math.round(flagCounts[i]/totalFlags*100)}%)</span>`
+  ).join('');
+
+  const prioLabels = ['Urgent','High','Medium','Low'];
+  const prioColorMap = { Urgent:'#C0392B', High:'#B7950B', Medium:'#1F4E79', Low:'#777' };
+  const prioCounts = prioLabels.map(p => entries.filter(e => e.priority === p).length);
+  const maxPrio = Math.max(1, ...prioCounts);
+  document.getElementById('priorityList').innerHTML = prioLabels.map((p,i) =>
+    `<div class="priority-row"><span class="pname" style="color:${prioColorMap[p]}">${p}</span>
+     <div class="pbar-wrap"><div class="pbar" style="width:${(prioCounts[i]/maxPrio*100)}%; background:${prioColorMap[p]}"></div></div>
+     <span class="pcount">${prioCounts[i]}</span></div>`
+  ).join('');
+}
+
+function renderTable(){
+  const rows = getFiltered();
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('emptyState');
+  if(rows.length === 0){ tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(e => {
+    const status = dueStatus(e);
+    const dueClass = status === 'overdue' ? 'due-overdue' : (status === 'soon' ? 'due-soon' : '');
+    const dueIcon = status === 'overdue' ? ' ⚠️' : (status === 'soon' ? ' 🕒' : '');
+    return `<tr data-id="${e.id}">
+      <td class="ticket-cell">${escapeHtml(e.ticket || '-')}</td>
+      <td class="topic-cell">${escapeHtml(e.topic)}</td>
+      <td><span class="cat-pill">${escapeHtml(e.category || '-')}</span></td>
+      <td class="detail-cell">${escapeHtml(e.detail || '-')}</td>
+      <td><span class="flag-pill ${flagClass(e.flag)}">${escapeHtml(e.flag)}</span></td>
+      <td><span class="prio-pill ${prioClass(e.priority)}">${escapeHtml(e.priority || 'Medium')}</span></td>
+      <td>${escapeHtml(e.pic || '-')}</td>
+      <td class="due-cell ${dueClass}">${formatDate(e.due)}${dueIcon}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn editBtn" title="Edit">✎</button>
+        <button class="icon-btn del deleteBtn" title="Hapus">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('.editBtn').forEach(btn => btn.addEventListener('click', ev => openModal(ev.target.closest('tr').dataset.id)));
+  tbody.querySelectorAll('.deleteBtn').forEach(btn => btn.addEventListener('click', ev => deleteEntry(ev.target.closest('tr').dataset.id)));
+}
+
+function render(){
+  populateCategoryControls();
+  renderMetrics();
+  renderCharts();
+  renderTable();
+}
+
+/* ---------------- NOTIFIKASI DUE DATE ---------------- */
+function checkDueNotifications(){
+  if(notifShown) return;
+  const overdue = entries.filter(e => dueStatus(e) === 'overdue');
+  const soon = entries.filter(e => dueStatus(e) === 'soon');
+  if(overdue.length === 0 && soon.length === 0) return;
+  notifShown = true;
+  const el = document.createElement('div');
+  el.className = 'toast-alert' + (overdue.length ? ' danger' : '');
+  const items = [...overdue.map(e => ({...e, tag:'⚠️ Overdue'})), ...soon.map(e => ({...e, tag:'🕒 Segera jatuh tempo'}))].slice(0,6);
+  el.innerHTML = `<div class="toast-head"><span>🔔 ${overdue.length + soon.length} open point perlu perhatian</span><button id="toastClose">✕</button></div>
+    <div class="toast-body">${items.map(it => `<div class="toast-item">${it.tag} · <b>${escapeHtml(it.ticket)}</b> — ${escapeHtml(it.topic)} (${formatDate(it.due)})</div>`).join('')}</div>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
+  el.querySelector('#toastClose').onclick = dismiss;
+  setTimeout(() => { if(el.parentNode) dismiss(); }, 12000);
+}
+
+/* ---------------- MODAL CRUD ---------------- */
+function openModal(id){
+  const overlay = document.getElementById('overlay');
+  document.getElementById('editId').value = id || '';
+  const deleteBtn = document.getElementById('btnDeleteInModal');
+  if(id){
+    const e = entries.find(x => x.id === id);
+    document.getElementById('modalTitle').textContent = 'Edit open point';
+    document.getElementById('ticketPreview').textContent = 'Ticket: ' + (e.ticket || '-');
+    document.getElementById('fTopic').value = e.topic || '';
+    document.getElementById('fCategoryInput').value = e.category || '';
+    document.getElementById('fDetail').value = e.detail || '';
+    document.getElementById('fFlagInput').value = e.flag || 'Open';
+    document.getElementById('fPriorityInput').value = e.priority || 'Medium';
+    document.getElementById('fPic').value = e.pic || '';
+    document.getElementById('fDue').value = e.due || '';
+    deleteBtn.style.display = 'flex';
+  } else {
+    document.getElementById('modalTitle').textContent = 'Tambah open point';
+    document.getElementById('ticketPreview').textContent = 'Ticket akan dibuat otomatis: ' + nextTicket();
+    document.getElementById('fTopic').value = '';
+    document.getElementById('fCategoryInput').value = '';
+    document.getElementById('fDetail').value = '';
+    document.getElementById('fFlagInput').value = 'Open';
+    document.getElementById('fPriorityInput').value = 'Medium';
+    document.getElementById('fPic').value = '';
+    document.getElementById('fDue').value = '';
+    deleteBtn.style.display = 'none';
+  }
+  overlay.classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+
+async function saveModal(){
+  const id = document.getElementById('editId').value;
+  const topic = document.getElementById('fTopic').value.trim();
+  if(!topic){ document.getElementById('fTopic').focus(); return; }
+  const data = {
+    topic,
+    category: document.getElementById('fCategoryInput').value.trim(),
+    detail: document.getElementById('fDetail').value.trim(),
+    flag: document.getElementById('fFlagInput').value,
+    priority: document.getElementById('fPriorityInput').value,
+    pic: document.getElementById('fPic').value.trim(),
+    due: document.getElementById('fDue').value
+  };
+  if(id){
+    const idx = entries.findIndex(x => x.id === id);
+    if(idx > -1) entries[idx] = { ...entries[idx], ...data };
+  } else {
+    entries.push({ id: uid(), ticket: nextTicket(), ...data, createdAt: new Date().toISOString() });
+  }
+  closeModal();
+  render();
+  await saveEntries();
+}
+
+async function deleteEntry(id){
+  if(!confirm('Hapus open point ini?')) return;
+  entries = entries.filter(e => e.id !== id);
+  render();
+  await saveEntries();
+}
+
+/* ---------------- EXPORT ---------------- */
+function exportExcel(){
+  const rows = getFiltered();
+  const data = rows.map(e => ({
+    Ticket: e.ticket, Topic: e.topic, Category: e.category, Detail: e.detail,
+    Flag: e.flag, Priority: e.priority, 'PIC/To': e.pic, 'Due Date': formatDate(e.due)
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws['!cols'] = [{wch:10},{wch:28},{wch:14},{wch:34},{wch:12},{wch:10},{wch:16},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Open Point');
+  XLSX.writeFile(wb, `open_point_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function exportPdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+  doc.setFontSize(14);
+  doc.text('Dashboard Operasional — Open Point', 40, 32);
+  doc.setFontSize(9);
+  doc.text('Diekspor: ' + new Date().toLocaleString('id-ID'), 40, 46);
+  const rows = getFiltered().map(e => [e.ticket, e.topic, e.category, e.detail, e.flag, e.priority, e.pic, formatDate(e.due)]);
+  doc.autoTable({
+    startY: 58,
+    head: [['Ticket','Topic','Category','Detail','Flag','Priority','PIC/To','Due Date']],
+    body: rows,
+    styles: { fontSize:8, cellPadding:5 },
+    headStyles: { fillColor:[31,56,100], textColor:255 },
+    alternateRowStyles: { fillColor:[242,242,242] },
+    columnStyles: { 3:{ cellWidth:180 } }
+  });
+  doc.save(`open_point_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+/* ---------------- EVENTS ---------------- */
+document.getElementById('btnAdd').addEventListener('click', () => openModal(null));
+document.getElementById('btnCancel').addEventListener('click', closeModal);
+document.getElementById('btnSave').addEventListener('click', saveModal);
+document.getElementById('btnDeleteInModal').addEventListener('click', () => {
+  const id = document.getElementById('editId').value;
+  closeModal();
+  if(id) deleteEntry(id);
+});
+document.getElementById('overlay').addEventListener('click', e => { if(e.target.id === 'overlay') closeModal(); });
+document.getElementById('fCategory').addEventListener('change', e => { filters.category = e.target.value; renderTable(); });
+document.getElementById('fFlag').addEventListener('change', e => { filters.flag = e.target.value; renderTable(); });
+document.getElementById('fPriority').addEventListener('change', e => { filters.priority = e.target.value; renderTable(); });
+document.getElementById('search').addEventListener('input', e => { filters.search = e.target.value; renderTable(); });
+document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
+document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
+
+loadEntries();
+</script>
+</body>
+</html>
