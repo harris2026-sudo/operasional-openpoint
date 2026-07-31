@@ -37,7 +37,7 @@
   header{background:linear-gradient(135deg,var(--navy),#274b82); color:#fff; padding:18px 22px; border-radius:12px; margin-bottom:16px; box-shadow:0 4px 16px rgba(31,56,100,.25); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;}
   header h1{margin:0 0 3px; font-size:19px;}
   header p{margin:0; font-size:12px; opacity:.85;}
-  .storage-badge{display:inline-flex; align-items:center; gap:8px; margin-top:9px; font-size:11px; font-weight:600; letter-spacing:.2px; padding:5px 13px 5px 6px; border-radius:20px; background:rgba(255,255,255,.12); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.25); color:#fff;}
+  .storage-badge{display:inline-flex; align-items:center; justify-content:center; margin-top:9px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.12); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.25); cursor:default;}
   .orb-ring{position:relative; width:17px; height:17px; display:flex; align-items:center; justify-content:center; flex:none;}
   .orb-ring::before{content:''; position:absolute; inset:0; border-radius:50%; border:1.5px dashed rgba(111,207,151,.75); animation:orbit-spin 3s linear infinite;}
   .orb-ring.saving::before{border-color:rgba(255,217,102,.85);}
@@ -157,7 +157,7 @@
     <div>
       <h1>📋 Dashboard Operasional — Open Point</h1>
       <p>Digital &amp; Technology Division (Digitech) · Digital Sustainability Operation</p>
-      <div class="storage-badge"><span class="orb-ring" id="orbRing"><span class="storage-dot" id="storeDot"></span></span><span id="storeText">Tersambung ke Google Sheets</span></div>
+      <div class="storage-badge" id="storageBadge" title="Tersambung ke Google Sheets"><span class="orb-ring" id="orbRing"><span class="storage-dot" id="storeDot"></span></span></div>
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn btn-outline" id="btnExportExcel">📊 Export Excel</button>
@@ -297,7 +297,7 @@
    HANYA tersimpan sementara di sesi browser saat ini (hilang saat
    direfresh) — banner peringatan akan muncul di atas dashboard.
    ============================================================ */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI72vPqHaXqxniiGLzKnC2HPBjd5aJ_FY2loKEcB_8UBjXiI59tuUGBb1IGqj8gg/exec"; // <-- WAJIB DIISI setelah deploy Apps Script
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI72vPqHaXqxniiGLzKnC2HPBjd5aJ_FY2loKEcB_8UBjXiI59tuUGBb1IGqj8gg/exec";
 
 const LIST_KEY = "openpoint:entries";
 const CATEGORIES_KEY = "openpoint:categories";
@@ -355,13 +355,13 @@ function showConfigBanner(){
 function setSyncing(state){
   const dot = document.getElementById('storeDot');
   const ring = document.getElementById('orbRing');
-  const txt = document.getElementById('storeText');
+  const badge = document.getElementById('storageBadge');
   dot.classList.remove('saving','error');
   ring.classList.remove('saving','error');
-  if(!isConfigured()){ txt.textContent = 'Mode sementara (belum tersambung Sheets)'; dot.classList.add('error'); ring.classList.add('error'); return; }
-  if(state === 'saving'){ dot.classList.add('saving'); ring.classList.add('saving'); txt.textContent = 'Menyimpan ke Google Sheets...'; }
-  else if(state === 'error'){ dot.classList.add('error'); ring.classList.add('error'); txt.textContent = 'Gagal terhubung ke Google Sheets'; }
-  else { txt.textContent = 'Tersambung ke Google Sheets'; }
+  if(!isConfigured()){ badge.title = 'Mode sementara — belum tersambung ke Google Sheets'; dot.classList.add('error'); ring.classList.add('error'); return; }
+  if(state === 'saving'){ dot.classList.add('saving'); ring.classList.add('saving'); badge.title = 'Menyimpan ke Google Sheets...'; }
+  else if(state === 'error'){ dot.classList.add('error'); ring.classList.add('error'); badge.title = 'Gagal terhubung ke Google Sheets'; }
+  else { badge.title = 'Tersambung ke Google Sheets'; }
 }
 
 function uid(){ return 'op_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
