@@ -26,6 +26,8 @@
     --red-bg:#FFC7CE; --red-fg:#9C0006;
     --grey-bg:#E7E6E6; --grey-fg:#555555;
     --gold-bg:#FFD966; --gold-fg:#7F6000;
+    --teal-bg:#CCF2F4; --teal-fg:#0F6674;
+    --purple-bg:#E3D7F4; --purple-fg:#5B2C87;
     font-family: Arial, "Helvetica Neue", sans-serif;
   }
   *{box-sizing:border-box;}
@@ -35,11 +37,16 @@
   header{background:linear-gradient(135deg,var(--navy),#274b82); color:#fff; padding:18px 22px; border-radius:12px; margin-bottom:16px; box-shadow:0 4px 16px rgba(31,56,100,.25); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;}
   header h1{margin:0 0 3px; font-size:19px;}
   header p{margin:0; font-size:12px; opacity:.85;}
-  .storage-badge{display:inline-flex; align-items:center; gap:6px; margin-top:8px; font-size:10.5px; padding:4px 10px; border-radius:12px; background:rgba(255,255,255,.15); color:#fff;}
-  .storage-dot{width:7px; height:7px; border-radius:50%; background:#6FCF97; flex:none;}
-  .storage-dot.saving{background:var(--gold-bg); animation:pulse 1s infinite;}
-  .storage-dot.error{background:#ff6b6b;}
+  .storage-badge{display:inline-flex; align-items:center; gap:8px; margin-top:9px; font-size:11px; font-weight:600; letter-spacing:.2px; padding:5px 13px 5px 6px; border-radius:20px; background:rgba(255,255,255,.12); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.25); color:#fff;}
+  .orb-ring{position:relative; width:17px; height:17px; display:flex; align-items:center; justify-content:center; flex:none;}
+  .orb-ring::before{content:''; position:absolute; inset:0; border-radius:50%; border:1.5px dashed rgba(111,207,151,.75); animation:orbit-spin 3s linear infinite;}
+  .orb-ring.saving::before{border-color:rgba(255,217,102,.85);}
+  .orb-ring.error::before{border-color:rgba(255,107,107,.85);}
+  .storage-dot{width:7px; height:7px; border-radius:50%; background:#6FCF97; box-shadow:0 0 9px 2px rgba(111,207,151,.75); flex:none; transition:background .2s ease, box-shadow .2s ease;}
+  .storage-dot.saving{background:var(--gold-bg); box-shadow:0 0 9px 2px rgba(255,217,102,.75); animation:pulse 1s infinite;}
+  .storage-dot.error{background:#ff6b6b; box-shadow:0 0 9px 2px rgba(255,107,107,.75);}
   @keyframes pulse{50%{opacity:.35;}}
+  @keyframes orbit-spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
 
   .config-banner{background:var(--red-bg); color:var(--red-fg); border-radius:10px; padding:10px 14px; font-size:12.5px; margin-bottom:16px; display:none; align-items:center; gap:8px;}
   .config-banner.show{display:flex;}
@@ -103,7 +110,7 @@
   .ticket-cell{font-family:"Courier New",monospace; font-weight:bold; color:var(--navy); white-space:nowrap;}
   .topic-cell{font-weight:bold; max-width:200px;}
   .detail-cell{color:var(--text-secondary); font-size:12px; max-width:230px;}
-  .cat-pill{font-size:11px; padding:3px 9px; border-radius:6px; background:var(--grey-bg); color:var(--grey-fg); border:1px solid #d7d7d7; white-space:nowrap;}
+  .cat-pill{font-size:11px; padding:3px 10px 3px 6px; border-radius:20px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; font-weight:bold;}
   .flag-pill, .prio-pill{font-size:11px; padding:3px 10px; border-radius:20px; font-weight:bold; white-space:nowrap; display:inline-block;}
   .flag-open{background:var(--yellow-bg); color:var(--yellow-fg);}
   .flag-progress{background:var(--blue-bg); color:var(--blue-fg);}
@@ -134,6 +141,13 @@
   .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
   .modal-actions .btn-danger{background:var(--red-fg); color:#fff;}
   .modal-actions .btn-danger:hover{opacity:.9;}
+
+  .cat-manager-row{display:flex; align-items:center; gap:8px; padding:7px 8px; border:1px solid var(--border); border-radius:9px; background:var(--zebra);}
+  .cat-icon-badge{width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; flex:none;}
+  .cat-manager-name{flex:1; font-weight:bold; font-size:12.5px; color:var(--text);}
+  .cat-manager-count{font-size:10.5px; color:var(--text-muted); white-space:nowrap;}
+  .cat-manager-row select.editCatIcon{width:52px; height:32px; padding:0 4px; font-size:15px; flex:none;}
+  .cat-manager-row input.editCatName{flex:1; height:32px; font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -142,8 +156,8 @@
   <header>
     <div>
       <h1>📋 Dashboard Operasional — Open Point</h1>
-      <p>Lacak topik, tindak lanjut, prioritas, dan due date tim secara real-time.</p>
-      <div class="storage-badge"><span class="storage-dot" id="storeDot"></span><span id="storeText">Tersambung ke Google Sheets</span></div>
+      <p>Digital &amp; Technology Division (Digitech) · Digital Sustainability Operation</p>
+      <div class="storage-badge"><span class="orb-ring" id="orbRing"><span class="storage-dot" id="storeDot"></span></span><span id="storeText">Tersambung ke Google Sheets</span></div>
     </div>
     <div style="display:flex; gap:8px;">
       <button class="btn btn-outline" id="btnExportExcel">📊 Export Excel</button>
@@ -181,6 +195,7 @@
   <div class="panel">
     <div class="toolbar">
       <select id="fCategory"><option value="">Semua kategori</option></select>
+      <button class="btn btn-outline" id="btnManageCategories" title="Kelola kategori">⚙️ Kategori</button>
       <select id="fFlag">
         <option value="">Semua flag</option>
         <option value="Open">Open</option>
@@ -252,6 +267,24 @@
   </div>
 </div>
 
+<div class="overlay" id="catOverlay">
+  <div class="modal">
+    <h3>⚙️ Kelola Kategori</h3>
+    <p style="font-size:11.5px; color:var(--text-secondary); margin:0 0 14px;">Atur ikon dan nama kategori open point. Kategori yang dihapus dari daftar tidak menghapus data open point yang sudah memakainya.</p>
+    <div id="catManagerList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px; max-height:280px; overflow-y:auto;"></div>
+    <div style="border-top:1px solid var(--border); padding-top:14px;">
+      <div class="field-row">
+        <div class="field"><label>Icon</label><select id="newCatIcon"></select></div>
+        <div class="field"><label>Nama kategori</label><input type="text" id="newCatName" placeholder="Contoh: Sustainability"></div>
+      </div>
+      <button class="btn btn-primary" id="btnAddCategory" style="width:100%; justify-content:center;">➕ Tambah kategori</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCloseCatManager">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    KONFIGURASI BACKEND STORAGE (Google Sheets via Apps Script)
@@ -264,10 +297,33 @@
    HANYA tersimpan sementara di sesi browser saat ini (hilang saat
    direfresh) — banner peringatan akan muncul di atas dashboard.
    ============================================================ */
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxI72vPqHaXqxniiGLzKnC2HPBjd5aJ_FY2loKEcB_8UBjXiI59tuUGBb1IGqj8gg/exec"; // <-- WAJIB DIISI setelah deploy Apps Script
+const APPS_SCRIPT_URL = ""; // <-- WAJIB DIISI setelah deploy Apps Script
 
 const LIST_KEY = "openpoint:entries";
+const CATEGORIES_KEY = "openpoint:categories";
+
+const ICON_CHOICES = ['⚙️','🤖','🛰️','🧠','💠','🌐','📡','🧬','🛡️','🔋','🖥️','🔐','📊','⚡','♾️','🧑‍🚀','🔷','🧭'];
+const CATEGORY_COLOR_MAP = {
+  blue:{bg:'var(--blue-bg)',fg:'var(--blue-fg)'},
+  green:{bg:'var(--green-bg)',fg:'var(--green-fg)'},
+  gold:{bg:'var(--gold-bg)',fg:'var(--gold-fg)'},
+  grey:{bg:'var(--grey-bg)',fg:'var(--grey-fg)'},
+  teal:{bg:'var(--teal-bg)',fg:'var(--teal-fg)'},
+  purple:{bg:'var(--purple-bg)',fg:'var(--purple-fg)'},
+  yellow:{bg:'var(--yellow-bg)',fg:'var(--yellow-fg)'},
+  red:{bg:'var(--red-bg)',fg:'var(--red-fg)'}
+};
+const COLOR_CYCLE = ['blue','teal','gold','purple','green','yellow','grey','red'];
+const DEFAULT_CATEGORIES = [
+  { id:'cat_operasional', name:'Operasional', icon:'⚙️', color:'blue' },
+  { id:'cat_finance', name:'Finance', icon:'💠', color:'gold' },
+  { id:'cat_it', name:'IT', icon:'🤖', color:'teal' },
+  { id:'cat_hr', name:'HR', icon:'🧑‍🚀', color:'purple' }
+];
+
 let entries = [];
+let categories = [];
+let editingCatId = null;
 let filters = { category:"", flag:"", priority:"", search:"" };
 let catChart, flagChart;
 let notifShown = false;
@@ -298,11 +354,13 @@ function showConfigBanner(){
 
 function setSyncing(state){
   const dot = document.getElementById('storeDot');
+  const ring = document.getElementById('orbRing');
   const txt = document.getElementById('storeText');
   dot.classList.remove('saving','error');
-  if(!isConfigured()){ txt.textContent = 'Mode sementara (belum tersambung Sheets)'; dot.classList.add('error'); return; }
-  if(state === 'saving'){ dot.classList.add('saving'); txt.textContent = 'Menyimpan ke Google Sheets...'; }
-  else if(state === 'error'){ dot.classList.add('error'); txt.textContent = 'Gagal terhubung ke Google Sheets'; }
+  ring.classList.remove('saving','error');
+  if(!isConfigured()){ txt.textContent = 'Mode sementara (belum tersambung Sheets)'; dot.classList.add('error'); ring.classList.add('error'); return; }
+  if(state === 'saving'){ dot.classList.add('saving'); ring.classList.add('saving'); txt.textContent = 'Menyimpan ke Google Sheets...'; }
+  else if(state === 'error'){ dot.classList.add('error'); ring.classList.add('error'); txt.textContent = 'Gagal terhubung ke Google Sheets'; }
   else { txt.textContent = 'Tersambung ke Google Sheets'; }
 }
 
@@ -317,7 +375,26 @@ function nextTicket(){
   return 'OP-' + String(max + 1).padStart(4,'0');
 }
 
+async function loadCategories(){
+  if(isConfigured()){
+    try{
+      const res = await gsGet(CATEGORIES_KEY);
+      categories = res.value ? JSON.parse(res.value) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    }catch(e){
+      categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    }
+  } else {
+    categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+  }
+}
+
+async function saveCategories(){
+  if(!isConfigured()) return;
+  try{ await gsSet(CATEGORIES_KEY, JSON.stringify(categories)); }catch(e){ /* diam-diam gagal, badge sudah menunjukkan status */ }
+}
+
 async function loadEntries(){
+  await loadCategories();
   if(isConfigured()){
     try{
       const res = await gsGet(LIST_KEY);
@@ -380,10 +457,20 @@ function prioClass(p){
   return 'prio-urgent';
 }
 
-function getCategories(){
-  const set = new Set(["Operasional","Finance","IT","HR"]);
-  entries.forEach(e => { if(e.category) set.add(e.category); });
-  return Array.from(set);
+function getCategoryList(){
+  const list = [...categories];
+  const known = new Set(categories.map(c => c.name));
+  entries.forEach(e => {
+    if(e.category && !known.has(e.category)){
+      known.add(e.category);
+      list.push({ id:'auto_' + e.category, name:e.category, icon:'🏷️', color:'grey' });
+    }
+  });
+  return list;
+}
+
+function lookupCategory(name){
+  return categories.find(c => c.name === name) || { name: name || '-', icon:'🏷️', color:'grey' };
 }
 
 function escapeHtml(str){
@@ -391,12 +478,12 @@ function escapeHtml(str){
 }
 
 function populateCategoryControls(){
-  const cats = getCategories();
+  const cats = getCategoryList();
   const fCategory = document.getElementById('fCategory');
   const current = fCategory.value;
-  fCategory.innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  fCategory.innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => `<option value="${escapeHtml(c.name)}">${c.icon} ${escapeHtml(c.name)}</option>`).join('');
   fCategory.value = current;
-  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${escapeHtml(c)}">`).join('');
+  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${escapeHtml(c.name)}">`).join('');
 }
 
 function getFiltered(){
@@ -433,8 +520,9 @@ function renderMetrics(){
 }
 
 function renderCharts(){
-  const cats = getCategories();
-  const catCounts = cats.map(c => entries.filter(e => e.category === c).length);
+  const catList = getCategoryList();
+  const cats = catList.map(c => `${c.icon} ${c.name}`);
+  const catCounts = catList.map(c => entries.filter(e => e.category === c.name).length);
   const flagLabels = ['Open','In Progress','Closed'];
   const flagCounts = flagLabels.map(f => entries.filter(e => e.flag === f).length);
   const flagColors = ['#7A6000','#1F4E79','#1E7A34'];
@@ -484,10 +572,12 @@ function renderTable(){
     const status = dueStatus(e);
     const dueClass = status === 'overdue' ? 'due-overdue' : (status === 'soon' ? 'due-soon' : '');
     const dueIcon = status === 'overdue' ? ' ⚠️' : (status === 'soon' ? ' 🕒' : '');
+    const cat = lookupCategory(e.category);
+    const catCol = CATEGORY_COLOR_MAP[cat.color] || CATEGORY_COLOR_MAP.grey;
     return `<tr data-id="${e.id}">
       <td class="ticket-cell">${escapeHtml(e.ticket || '-')}</td>
       <td class="topic-cell">${escapeHtml(e.topic)}</td>
-      <td><span class="cat-pill">${escapeHtml(e.category || '-')}</span></td>
+      <td><span class="cat-pill" style="background:${catCol.bg}; color:${catCol.fg};">${cat.icon} ${escapeHtml(cat.name)}</span></td>
       <td class="detail-cell">${escapeHtml(e.detail || '-')}</td>
       <td><span class="flag-pill ${flagClass(e.flag)}">${escapeHtml(e.flag)}</span></td>
       <td><span class="prio-pill ${prioClass(e.priority)}">${escapeHtml(e.priority || 'Medium')}</span></td>
@@ -594,6 +684,105 @@ async function deleteEntry(id){
   await saveEntries();
 }
 
+/* ---------------- KELOLA KATEGORI ---------------- */
+function populateIconSelect(){
+  document.getElementById('newCatIcon').innerHTML = ICON_CHOICES.map(ic => `<option value="${ic}">${ic}</option>`).join('');
+}
+
+function renderCategoryManager(){
+  const list = document.getElementById('catManagerList');
+  list.innerHTML = categories.map(c => {
+    const col = CATEGORY_COLOR_MAP[c.color] || CATEGORY_COLOR_MAP.grey;
+    const count = entries.filter(e => e.category === c.name).length;
+    if(editingCatId === c.id){
+      return `<div class="cat-manager-row" data-id="${c.id}">
+        <select class="editCatIcon">${ICON_CHOICES.map(ic => `<option value="${ic}" ${ic === c.icon ? 'selected' : ''}>${ic}</option>`).join('')}</select>
+        <input type="text" class="editCatName" value="${escapeHtml(c.name)}">
+        <button class="icon-btn saveCatBtn" title="Simpan">💾</button>
+        <button class="icon-btn cancelCatBtn" title="Batal">✕</button>
+      </div>`;
+    }
+    return `<div class="cat-manager-row" data-id="${c.id}">
+      <span class="cat-icon-badge" style="background:${col.bg}; color:${col.fg};">${c.icon}</span>
+      <span class="cat-manager-name">${escapeHtml(c.name)}</span>
+      <span class="cat-manager-count">${count} item</span>
+      <button class="icon-btn editCatBtn" title="Edit">✎</button>
+      <button class="icon-btn del deleteCatBtn" title="Hapus">🗑</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.editCatBtn').forEach(btn => btn.addEventListener('click', ev => {
+    editingCatId = ev.target.closest('.cat-manager-row').dataset.id;
+    renderCategoryManager();
+  }));
+  list.querySelectorAll('.cancelCatBtn').forEach(btn => btn.addEventListener('click', () => {
+    editingCatId = null;
+    renderCategoryManager();
+  }));
+  list.querySelectorAll('.saveCatBtn').forEach(btn => btn.addEventListener('click', ev => {
+    const row = ev.target.closest('.cat-manager-row');
+    const icon = row.querySelector('.editCatIcon').value;
+    const name = row.querySelector('.editCatName').value.trim();
+    saveCategoryEdit(row.dataset.id, name, icon);
+  }));
+  list.querySelectorAll('.deleteCatBtn').forEach(btn => btn.addEventListener('click', ev => {
+    deleteCategory(ev.target.closest('.cat-manager-row').dataset.id);
+  }));
+}
+
+async function saveCategoryEdit(id, name, icon){
+  if(!name) return;
+  const cat = categories.find(c => c.id === id);
+  if(!cat) return;
+  const oldName = cat.name;
+  cat.name = name;
+  cat.icon = icon;
+  if(oldName !== name){
+    entries.forEach(e => { if(e.category === oldName) e.category = name; });
+  }
+  editingCatId = null;
+  renderCategoryManager();
+  render();
+  await saveCategories();
+  if(oldName !== name) await saveEntries();
+}
+
+async function deleteCategory(id){
+  const cat = categories.find(c => c.id === id);
+  if(!cat) return;
+  const count = entries.filter(e => e.category === cat.name).length;
+  const msg = count > 0
+    ? `Kategori "${cat.name}" dipakai di ${count} open point. Open point tersebut tidak akan terhapus, hanya kategorinya jadi tidak terdaftar lagi. Lanjutkan hapus?`
+    : `Hapus kategori "${cat.name}"?`;
+  if(!confirm(msg)) return;
+  categories = categories.filter(c => c.id !== id);
+  renderCategoryManager();
+  render();
+  await saveCategories();
+}
+
+async function addCategory(){
+  const icon = document.getElementById('newCatIcon').value;
+  const nameInput = document.getElementById('newCatName');
+  const name = nameInput.value.trim();
+  if(!name){ nameInput.focus(); return; }
+  if(categories.some(c => c.name.toLowerCase() === name.toLowerCase())){ alert('Kategori dengan nama itu sudah ada.'); return; }
+  const color = COLOR_CYCLE[categories.length % COLOR_CYCLE.length];
+  categories.push({ id:'cat_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), name, icon, color });
+  nameInput.value = '';
+  renderCategoryManager();
+  render();
+  await saveCategories();
+}
+
+function openCategoryManager(){
+  editingCatId = null;
+  populateIconSelect();
+  renderCategoryManager();
+  document.getElementById('catOverlay').classList.add('show');
+}
+function closeCategoryManager(){ document.getElementById('catOverlay').classList.remove('show'); }
+
 /* ---------------- EXPORT ---------------- */
 function exportExcel(){
   const rows = getFiltered();
@@ -644,6 +833,10 @@ document.getElementById('fPriority').addEventListener('change', e => { filters.p
 document.getElementById('search').addEventListener('input', e => { filters.search = e.target.value; renderTable(); });
 document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
 document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
+document.getElementById('btnManageCategories').addEventListener('click', openCategoryManager);
+document.getElementById('btnCloseCatManager').addEventListener('click', closeCategoryManager);
+document.getElementById('btnAddCategory').addEventListener('click', addCategory);
+document.getElementById('catOverlay').addEventListener('click', e => { if(e.target.id === 'catOverlay') closeCategoryManager(); });
 
 loadEntries();
 </script>
