@@ -219,7 +219,7 @@
       <table id="dataTable">
         <thead>
           <tr>
-            <th>Ticket</th><th>Topic</th><th>Category</th><th>Detail</th><th>Flag</th><th>Priority</th><th>PIC/To</th><th>Due date</th><th></th>
+            <th>Ticket</th><th>Ticket Turing</th><th>Topic</th><th>Category</th><th>Detail</th><th>Flag</th><th>Priority</th><th>PIC/To</th><th>Due date</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -235,6 +235,7 @@
     <h3 id="modalTitle">Tambah open point</h3>
     <div class="ticket-preview" id="ticketPreview"></div>
     <input type="hidden" id="editId">
+    <div class="field"><label>Ticket Turing</label><input type="text" id="fTicketTuring" placeholder="Contoh: TRG-2026-0001"></div>
     <div class="field"><label>Topic</label><input type="text" id="fTopic" placeholder="Contoh: Migrasi server backup"></div>
     <div class="field-row">
       <div class="field"><label>Category</label><input type="text" id="fCategoryInput" list="catList" placeholder="Operasional">
@@ -496,7 +497,7 @@ function getFiltered(){
     if(filters.priority && e.priority !== filters.priority) return false;
     if(filters.search){
       const q = filters.search.toLowerCase();
-      const hay = `${e.ticket} ${e.topic} ${e.detail} ${e.pic}`.toLowerCase();
+      const hay = `${e.ticket} ${e.ticketTuring} ${e.topic} ${e.detail} ${e.pic}`.toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -579,6 +580,7 @@ function renderTable(){
     const catCol = CATEGORY_COLOR_MAP[cat.color] || CATEGORY_COLOR_MAP.grey;
     return `<tr data-id="${e.id}">
       <td class="ticket-cell">${escapeHtml(e.ticket || '-')}</td>
+      <td class="ticket-cell">${escapeHtml(e.ticketTuring || '-')}</td>
       <td class="topic-cell">${escapeHtml(e.topic)}</td>
       <td><span class="cat-pill" style="background:${catCol.bg}; color:${catCol.fg};">${cat.icon} ${escapeHtml(cat.name)}</span></td>
       <td class="detail-cell">${escapeHtml(e.detail || '-')}</td>
@@ -632,6 +634,7 @@ function openModal(id){
     const e = entries.find(x => x.id === id);
     document.getElementById('modalTitle').textContent = 'Edit open point';
     document.getElementById('ticketPreview').textContent = 'Ticket: ' + (e.ticket || '-');
+    document.getElementById('fTicketTuring').value = e.ticketTuring || '';
     document.getElementById('fTopic').value = e.topic || '';
     document.getElementById('fCategoryInput').value = e.category || '';
     document.getElementById('fDetail').value = e.detail || '';
@@ -643,6 +646,7 @@ function openModal(id){
   } else {
     document.getElementById('modalTitle').textContent = 'Tambah open point';
     document.getElementById('ticketPreview').textContent = 'Ticket akan dibuat otomatis: ' + nextTicket();
+    document.getElementById('fTicketTuring').value = '';
     document.getElementById('fTopic').value = '';
     document.getElementById('fCategoryInput').value = '';
     document.getElementById('fDetail').value = '';
@@ -661,6 +665,7 @@ async function saveModal(){
   const topic = document.getElementById('fTopic').value.trim();
   if(!topic){ document.getElementById('fTopic').focus(); return; }
   const data = {
+    ticketTuring: document.getElementById('fTicketTuring').value.trim(),
     topic,
     category: document.getElementById('fCategoryInput').value.trim(),
     detail: document.getElementById('fDetail').value.trim(),
@@ -790,11 +795,11 @@ function closeCategoryManager(){ document.getElementById('catOverlay').classList
 function exportExcel(){
   const rows = getFiltered();
   const data = rows.map(e => ({
-    Ticket: e.ticket, Topic: e.topic, Category: e.category, Detail: e.detail,
+    Ticket: e.ticket, 'Ticket Turing': e.ticketTuring, Topic: e.topic, Category: e.category, Detail: e.detail,
     Flag: e.flag, Priority: e.priority, 'PIC/To': e.pic, 'Due Date': formatDate(e.due)
   }));
   const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = [{wch:10},{wch:28},{wch:14},{wch:34},{wch:12},{wch:10},{wch:16},{wch:14}];
+  ws['!cols'] = [{wch:10},{wch:16},{wch:28},{wch:14},{wch:34},{wch:12},{wch:10},{wch:16},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Open Point');
   XLSX.writeFile(wb, `open_point_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -807,15 +812,15 @@ function exportPdf(){
   doc.text('Dashboard Operasional — Open Point', 40, 32);
   doc.setFontSize(9);
   doc.text('Diekspor: ' + new Date().toLocaleString('id-ID'), 40, 46);
-  const rows = getFiltered().map(e => [e.ticket, e.topic, e.category, e.detail, e.flag, e.priority, e.pic, formatDate(e.due)]);
+  const rows = getFiltered().map(e => [e.ticket, e.ticketTuring, e.topic, e.category, e.detail, e.flag, e.priority, e.pic, formatDate(e.due)]);
   doc.autoTable({
     startY: 58,
-    head: [['Ticket','Topic','Category','Detail','Flag','Priority','PIC/To','Due Date']],
+    head: [['Ticket','Ticket Turing','Topic','Category','Detail','Flag','Priority','PIC/To','Due Date']],
     body: rows,
     styles: { fontSize:8, cellPadding:5 },
     headStyles: { fillColor:[31,56,100], textColor:255 },
     alternateRowStyles: { fillColor:[242,242,242] },
-    columnStyles: { 3:{ cellWidth:180 } }
+    columnStyles: { 4:{ cellWidth:150 } }
   });
   doc.save(`open_point_${new Date().toISOString().slice(0,10)}.pdf`);
 }
