@@ -87,6 +87,7 @@
   .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
   select, input[type=text], input[type=date]{height:36px; border:1px solid #c7d3e0; border-radius:6px; background:var(--surface); color:var(--text); padding:0 10px; font-size:13px; font-family:inherit;}
   select:focus, input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(46,95,163,.15);}
+  select.filter-active{border-color:var(--accent); border-width:2px; background:var(--hilite); font-weight:bold;}
   #search{flex:1; min-width:160px;}
   .btn{height:36px; padding:0 13px; border-radius:6px; border:none; font-size:12.5px; font-weight:bold; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
   .btn:active{transform:scale(.96);}
@@ -210,6 +211,7 @@
         <option value="Urgent">Urgent</option>
       </select>
       <input type="text" id="search" placeholder="🔍 Cari tiket, topik, detail, atau PIC...">
+      <button class="btn btn-outline" id="btnResetFilter" title="Reset semua filter">🔄 Reset filter</button>
       <button class="btn btn-primary" id="btnAdd">➕ Tambah open point</button>
     </div>
 
@@ -483,6 +485,7 @@ function populateCategoryControls(){
   const current = fCategory.value;
   fCategory.innerHTML = '<option value="">Semua kategori</option>' + cats.map(c => `<option value="${escapeHtml(c.name)}">${c.icon} ${escapeHtml(c.name)}</option>`).join('');
   fCategory.value = current;
+  fCategory.classList.toggle('filter-active', !!fCategory.value);
   document.getElementById('catList').innerHTML = cats.map(c => `<option value="${escapeHtml(c.name)}">`).join('');
 }
 
@@ -827,10 +830,31 @@ document.getElementById('btnDeleteInModal').addEventListener('click', () => {
   if(id) deleteEntry(id);
 });
 document.getElementById('overlay').addEventListener('click', e => { if(e.target.id === 'overlay') closeModal(); });
-document.getElementById('fCategory').addEventListener('change', e => { filters.category = e.target.value; renderTable(); });
-document.getElementById('fFlag').addEventListener('change', e => { filters.flag = e.target.value; renderTable(); });
-document.getElementById('fPriority').addEventListener('change', e => { filters.priority = e.target.value; renderTable(); });
+document.getElementById('fCategory').addEventListener('change', e => { filters.category = e.target.value; markFilterActive(e.target); renderTable(); });
+document.getElementById('fFlag').addEventListener('change', e => { filters.flag = e.target.value; markFilterActive(e.target); renderTable(); });
+document.getElementById('fPriority').addEventListener('change', e => { filters.priority = e.target.value; markFilterActive(e.target); renderTable(); });
 document.getElementById('search').addEventListener('input', e => { filters.search = e.target.value; renderTable(); });
+document.getElementById('btnResetFilter').addEventListener('click', resetFilters);
+
+function markFilterActive(select){ select.classList.toggle('filter-active', !!select.value); }
+
+function resetFilters(){
+  filters = { category:"", flag:"", priority:"", search:"" };
+  ['fCategory','fFlag','fPriority'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('filter-active');
+  });
+  document.getElementById('search').value = '';
+  renderTable();
+}
+
+// Cegah dropdown filter berubah tidak sengaja akibat scroll mouse saat sedang fokus
+['fCategory','fFlag','fPriority'].forEach(id => {
+  document.getElementById(id).addEventListener('wheel', e => {
+    if(document.activeElement === e.target) e.preventDefault();
+  }, { passive:false });
+});
 document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
 document.getElementById('btnExportPdf').addEventListener('click', exportPdf);
 document.getElementById('btnManageCategories').addEventListener('click', openCategoryManager);
