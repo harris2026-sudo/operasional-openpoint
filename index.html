@@ -8,7 +8,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --navy:#1F3864;
@@ -150,24 +149,6 @@
   .cat-manager-count{font-size:10.5px; color:var(--text-muted); white-space:nowrap;}
   .cat-manager-row select.editCatIcon{width:52px; height:32px; padding:0 4px; font-size:15px; flex:none;}
   .cat-manager-row input.editCatName{flex:1; height:32px; font-size:12.5px;}
-
-  .modal-wide{max-width:900px;}
-  .import-drop{border:2px dashed var(--border); border-radius:10px; padding:22px; text-align:center; color:var(--text-secondary); font-size:12.5px; cursor:pointer; transition:border-color .15s ease, background .15s ease;}
-  .import-drop:hover, .import-drop.drag{border-color:var(--accent); background:var(--hilite);}
-  .import-drop input{display:none;}
-  .import-status{font-size:12px; color:var(--text-secondary); margin:10px 0; display:none; align-items:center; gap:8px;}
-  .import-status.show{display:flex;}
-  .spinner{width:14px; height:14px; border-radius:50%; border:2px solid var(--hilite); border-top-color:var(--accent); animation:orbit-spin .7s linear infinite; flex:none;}
-  .import-table-wrap{max-height:380px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; margin-top:10px;}
-  .import-table-wrap table{font-size:11.5px;}
-  .import-table-wrap thead th{position:sticky; top:0; z-index:1;}
-  .import-table-wrap td{vertical-align:top; padding:6px 7px;}
-  .import-table-wrap input, .import-table-wrap select, .import-table-wrap textarea{width:100%; height:30px; font-size:11.5px; border:1px solid #c7d3e0; border-radius:5px; padding:0 6px; font-family:inherit; background:#fff;}
-  .import-table-wrap textarea{height:44px; padding:5px 6px; resize:vertical;}
-  .import-table-wrap td.chk{width:26px; text-align:center;}
-  .import-raw-toggle{font-size:11.5px; color:var(--accent); cursor:pointer; margin-top:10px; display:inline-block;}
-  .import-raw-text{width:100%; height:120px; font-size:11px; font-family:"Courier New",monospace; margin-top:6px; display:none; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--zebra);}
-  .import-empty{text-align:center; padding:24px; color:var(--text-muted); font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -231,7 +212,6 @@
       </select>
       <input type="text" id="search" placeholder="🔍 Cari tiket, topik, detail, atau PIC...">
       <button class="btn btn-outline" id="btnResetFilter" title="Reset semua filter">🔄 Reset filter</button>
-      <button class="btn btn-outline" id="btnImportPdf">📄 Import PDF</button>
       <button class="btn btn-primary" id="btnAdd">➕ Tambah open point</button>
     </div>
 
@@ -308,33 +288,6 @@
   </div>
 </div>
 
-<div class="overlay" id="importOverlay">
-  <div class="modal modal-wide">
-    <h3>📄 Import open point dari PDF (mis. Minutes of Meeting)</h3>
-    <p style="font-size:11.5px; color:var(--text-secondary); margin:0 0 12px;">
-      Upload PDF, teks dan baris poin (bullet) akan ditarik otomatis dari dokumen. Cek &amp; lengkapi kategori / prioritas / PIC / due date tiap baris sebelum ditambahkan ke dashboard &amp; Google Sheets.
-    </p>
-
-    <label class="import-drop" id="importDrop" for="importFileInput">
-      📎 <b>Klik untuk pilih file PDF</b> atau drag &amp; drop ke sini<br>
-      <span id="importFileName" style="color:var(--text-muted);">Belum ada file dipilih</span>
-      <input type="file" id="importFileInput" accept="application/pdf">
-    </label>
-
-    <div class="import-status" id="importStatus"><span class="spinner"></span><span id="importStatusText">Memproses PDF...</span></div>
-
-    <div id="importReviewWrap"></div>
-
-    <div class="modal-actions" style="justify-content:space-between; align-items:center;">
-      <span style="font-size:11.5px; color:var(--text-muted);" id="importCountLabel"></span>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-ghost" id="btnCancelImport">Batal</button>
-        <button class="btn btn-primary" id="btnConfirmImport" style="display:none;">💾 Tambahkan terpilih ke dashboard</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 /* ============================================================
    KONFIGURASI BACKEND STORAGE (Google Sheets via Apps Script)
@@ -365,93 +318,11 @@ const CATEGORY_COLOR_MAP = {
 };
 const COLOR_CYCLE = ['blue','teal','gold','purple','green','yellow','grey','red'];
 const DEFAULT_CATEGORIES = [
-  { id:'cat_algo', name:'WIM Algorithm', icon:'🧠', color:'blue' },
-  { id:'cat_akurasi', name:'WIM Akurasi', icon:'📡', color:'teal' },
-  { id:'cat_infra', name:'WIM Infrastruktur', icon:'🛰️', color:'gold' },
-  { id:'cat_rfid', name:'RFID & Sensor', icon:'🤖', color:'purple' },
-  { id:'cat_admin', name:'Administrasi PJP', icon:'💠', color:'green' }
+  { id:'cat_operasional', name:'Operasional', icon:'⚙️', color:'blue' },
+  { id:'cat_finance', name:'Finance', icon:'💠', color:'gold' },
+  { id:'cat_it', name:'IT', icon:'🤖', color:'teal' },
+  { id:'cat_hr', name:'HR', icon:'🧑‍🚀', color:'purple' }
 ];
-
-/* ============================================================
-   SEED OPEN POINT — MoM Weekly Update OAM WIM BIB
-   Sumber: MoM 01 Agustus 2026 & MoM 04 Agustus 2026 (DigiTech x VISI)
-   Berjalan sekali saja (ditandai lewat SEED_KEY di Google Sheets),
-   otomatis push ke Sheets & langsung tampil di dashboard begitu
-   file ini pertama kali dibuka oleh siapapun.
-   ============================================================ */
-const SEED_KEY = "openpoint:seed_wimbib_20260801_0804";
-const SEED_DATA = [
-  { topic:"Algoritma miss axle - data gathering & clustering", category:"WIM Algorithm",
-    detail:"Feedback Mas Hendra: tambah data gathering lagi, clustering berdasarkan series & waktu. Sinkronkan hasil pengukuran surface dgn perhitungan data Mas Pram — GVW reading vs balance & vs STD sum belum menunjukkan pola jelas.",
-    flag:"In Progress", priority:"High", pic:"Azil (WIM) / Mas Pram", due:"2026-08-08", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Pengukuran penurunan strip (penggaris & jidar)", category:"WIM Algorithm",
-    detail:"Pengukuran penurunan strip dilakukan juga dgn penggaris (cek penurunan resin) dan jidar (cek penurunan pavement) sebagai pembanding hasil pengukuran surface.",
-    flag:"Open", priority:"Medium", pic:"Tim VISI", due:"2026-08-11", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Konfirmasi status pending new rule base", category:"WIM Algorithm",
-    detail:"Konfirmasi ulang apakah transaksi Pending dari New Rule Base tetap Pending atau langsung Actual; update deskripsi Daily Report VISI dibagi sesuai jumlah ban yang menginjak.",
-    flag:"Open", priority:"Medium", pic:"Rafli / Tim VISI", due:"2026-08-08", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Validasi transaksi mis-gandar G7 & G14", category:"WIM Akurasi",
-    detail:"Deploy rule based misgandar Lane 1 & 2 sudah done (Range SDT 70-80 ton, DDT 140-160 ton). Monitoring 31 Juli–4 Agustus belum ada temuan transaksi G14 terpisah lagi.",
-    flag:"In Progress", priority:"High", pic:"Tim DGT / VGT", due:"2026-08-05", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Penimbangan static G14 dengan portable scale", category:"WIM Akurasi",
-    detail:"Perlu persiapan adaptasi Portable Scale, rencana kerja, JSA & pengendalian risiko. Rekomendasi aktivitas di Shift 1. JSA ditambahkan utk pengetesan dgn Bidur sebelum timbang G14. Pengiriman Portable Scale utk uji tera dilakukan setelah aktivitas selesai.",
-    flag:"In Progress", priority:"High", pic:"Tim DGT / VGT", due:"2026-08-10", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Setting kelipatan static pad (10kg)", category:"WIM Akurasi",
-    detail:"Pengujian static pad (Bidur 20kg/100kg & LV) hasil normal 2x pengujian. Kelipatan static pad 10kg masih dicoba disetting apakah bisa diubah.",
-    flag:"Open", priority:"Low", pic:"Tim VISI", due:"2026-08-15", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Koordinasi setting G14 dgn tim Hauling/CHR", category:"WIM Akurasi",
-    detail:"Koordinasi dgn tim Hauling/CHR untuk settingan G14 dilakukan setelah persiapan Portable Scale complete.",
-    flag:"Open", priority:"Medium", pic:"Tim DGT", due:"2026-08-12", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Pengecekan stock material perbaikan lane", category:"WIM Infrastruktur",
-    detail:"Plan pengecekan stock material di Office Site VGT bersamaan dgn tim DSO Site (weekly) tiap Senin. Material fosroc baru ada 3 sak, masih kurang — pengiriman & pengadaan dari Jakarta (sifat adhoc, bukan stock reguler).",
-    flag:"Open", priority:"High", pic:"Tim DSO Site", due:"2026-08-03", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Plan perbaikan Lane 1 & 3", category:"WIM Infrastruktur",
-    detail:"Plan perbaikan Lane 1 & 3 masih belum fix, perlu konfirmasi durasi ke Mas Azil. Perlu disesuaikan dgn aktivitas perpanjangan uji tera low speed Lane 3 & Lane 1.",
-    flag:"Open", priority:"Medium", pic:"Azil (WIM)", due:"2026-08-14", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Pekerjaan chipseal inlet Lane 2 & 3", category:"WIM Infrastruktur",
-    detail:"Tim KHS mengerjakan chipseal inlet Lane 2 & 3, estimasi 3.5 jam/lane, dikerjakan sequence (2 lane tetap aktif, 1 backup). Rencana tgl 5/8 Lane 3, tgl 6/8 Lane 2.",
-    flag:"In Progress", priority:"Medium", pic:"Tim KHS", due:"2026-08-06", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Follow up double trigger light curtain (KMB merah)", category:"RFID & Sensor",
-    detail:"4 transaksi pending karena double trigger Light Curtain unit KMB merah. Dicoba perubahan Config Rule Base G14 dgn penambahan Whitelist Nolam; align dgn tim VISI untuk dokumentasi unit yg biasa terkena (SHACMAN X3000) vs unit biasa.",
-    flag:"Open", priority:"High", pic:"Tim VISI", due:"2026-08-11", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Follow up temuan double RFID", category:"RFID & Sensor",
-    detail:"Temuan double RFID pada beberapa unit (RBT, GEC, AEK, KMB). Tambahkan filter series agar mengerucut ke series tertentu; Double RFID format X awalan 523 dicek perbandingan series unit.",
-    flag:"Open", priority:"Medium", pic:"Tim VISI", due:"2026-08-13", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Anomali sensor GEC 9046 & penurunan sensor Lane 1", category:"RFID & Sensor",
-    detail:"Anomali muncul karena belum ada peresinan ulang Lane 1. Pembersihan sensor oleh tim OA dgn memperhatikan penggunaan air (disapu jika debu, disiram jika debu kerak) utk kurangi risiko penurunan sensor lanjutan.",
-    flag:"Open", priority:"Medium", pic:"Tim OA", due:"2026-08-10", ticketTuring:"MoM 01/08/2026" },
-  { topic:"Dokumen PA UA & laporan ke tim WB", category:"Administrasi PJP",
-    detail:"Dokumen PA UA belum di-share ke tim WB. Info planning/proses WIM boleh di-share ke tim WB, namun terkait komersil hanya ke Digitech. Format laporan ke WB sama dgn PJP (SLA PA, MA, UA tanpa SLA Monthly).",
-    flag:"Open", priority:"Medium", pic:"Rafli", due:"2026-08-09", ticketTuring:"MoM 01 & 04/08/2026" },
-  { topic:"Jadwal maintenance WIM (kalibrasi 3 bulanan)", category:"Administrasi PJP",
-    detail:"Akan dicoba membuat jadwal Maintenance WIM dgn melakukan kalibrasi setiap 3 bulan.",
-    flag:"Open", priority:"Low", pic:"Tim DGT / VGT", due:"2026-08-20", ticketTuring:"MoM 04/08/2026" },
-  { topic:"Monitoring PJP on track", category:"Administrasi PJP",
-    detail:"PJP dipantau tetap on track menuju target 30 Agustus 2026.",
-    flag:"In Progress", priority:"High", pic:"Rafli", due:"2026-08-30", ticketTuring:"MoM 04/08/2026" }
-];
-
-async function seedWimBibOpenPoints(){
-  try{ await gsGet(SEED_KEY); return; }catch(e){ /* belum pernah di-seed, lanjut */ }
-  categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-  await saveCategories();
-  SEED_DATA.forEach(item => {
-    entries.push({
-      id: uid(),
-      ticket: nextTicket(),
-      ticketTuring: item.ticketTuring,
-      topic: item.topic,
-      category: item.category,
-      detail: item.detail,
-      flag: item.flag,
-      priority: item.priority,
-      pic: item.pic,
-      due: item.due
-    });
-  });
-  await saveEntries();
-  try{ await gsSet(SEED_KEY, 'done_' + new Date().toISOString()); }catch(e){ /* diam-diam gagal, akan dicoba lagi di sesi berikutnya */ }
-}
 
 let entries = [];
 let categories = [];
@@ -537,7 +408,6 @@ async function loadEntries(){
       entries = [];
       setSyncing('ok'); // key belum pernah dibuat = wajar, anggap kosong
     }
-    await seedWimBibOpenPoints();
   } else {
     entries = [];
   }
@@ -1015,203 +885,6 @@ document.getElementById('btnManageCategories').addEventListener('click', openCat
 document.getElementById('btnCloseCatManager').addEventListener('click', closeCategoryManager);
 document.getElementById('btnAddCategory').addEventListener('click', addCategory);
 document.getElementById('catOverlay').addEventListener('click', e => { if(e.target.id === 'catOverlay') closeCategoryManager(); });
-
-/* ---------------- IMPORT DARI PDF ---------------- */
-if(window.pdfjsLib){
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-
-let importCandidates = [];
-const BULLET_RE = /^\s*(?:[•●○▪◦·‣]|-{1}\s|\*\s|\d{1,2}[.)]\s)/;
-const NOISE_RE = /^(page\s+\d+|minutes of meeting|title|date,\s*time|location|agenda|attendees|name|institutions|author|discussion details|opening|notes|conclusion|parties|sign)\b/i;
-
-async function extractPdfText(file){
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  let fullText = '';
-  for(let p = 1; p <= pdf.numPages; p++){
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    const lines = {};
-    content.items.forEach(it => {
-      const y = Math.round(it.transform[5]);
-      if(!lines[y]) lines[y] = [];
-      lines[y].push(it.str);
-    });
-    const ys = Object.keys(lines).map(Number).sort((a,b) => b - a);
-    ys.forEach(y => { fullText += lines[y].join(' ') + '\n'; });
-    fullText += '\n';
-  }
-  return fullText;
-}
-
-function extractCandidateLines(rawText){
-  const rawLines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-  const seen = new Set();
-  const out = [];
-  rawLines.forEach(line => {
-    if(line.length < 15 || line.length > 400) return;
-    if(NOISE_RE.test(line)) return;
-    if(!BULLET_RE.test(line)) return;
-    const cleaned = line.replace(BULLET_RE, '').trim();
-    if(cleaned.length < 12) return;
-    const key = cleaned.toLowerCase().slice(0, 60);
-    if(seen.has(key)) return;
-    seen.add(key);
-    out.push(cleaned);
-  });
-  return out.slice(0, 60);
-}
-
-function importRowHtml(idx, text){
-  const defCat = categories[0] ? categories[0].name : '';
-  const catOptions = categories.map(c => `<option value="${escapeHtml(c.name)}">${c.icon} ${escapeHtml(c.name)}</option>`).join('');
-  const topicGuess = text.length > 70 ? text.slice(0, 67) + '...' : text;
-  return `<tr data-idx="${idx}">
-    <td class="chk"><input type="checkbox" class="impChk" checked></td>
-    <td><input type="text" class="impTopic" value="${escapeHtml(topicGuess)}"></td>
-    <td><select class="impCategory">${catOptions}</select></td>
-    <td><textarea class="impDetail">${escapeHtml(text)}</textarea></td>
-    <td><select class="impFlag"><option>Open</option><option>In Progress</option><option>Closed</option></select></td>
-    <td><select class="impPriority"><option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option></select></td>
-    <td><input type="text" class="impPic" placeholder="PIC/To"></td>
-    <td><input type="date" class="impDue"></td>
-  </tr>`;
-}
-
-function renderImportReview(){
-  const wrap = document.getElementById('importReviewWrap');
-  const confirmBtn = document.getElementById('btnConfirmImport');
-  const countLabel = document.getElementById('importCountLabel');
-  if(importCandidates.length === 0){
-    wrap.innerHTML = '<div class="import-empty">📭 Tidak ada baris poin (bullet) yang terdeteksi otomatis. Klik "➕ Tambah baris manual" atau cek teks mentah di bawah untuk menambahkan sendiri.</div>' +
-      '<button class="btn btn-outline" id="btnAddManualImportRow" style="margin-top:10px;">➕ Tambah baris manual</button>';
-    confirmBtn.style.display = 'none';
-    countLabel.textContent = '';
-  } else {
-    wrap.innerHTML = `<div class="import-table-wrap"><table>
-      <thead><tr>
-        <th></th><th>Topic</th><th>Category</th><th>Detail</th><th>Flag</th><th>Priority</th><th>PIC/To</th><th>Due date</th>
-      </tr></thead>
-      <tbody id="importTbody">${importCandidates.map((t,i) => importRowHtml(i,t)).join('')}</tbody>
-    </table></div>
-    <button class="btn btn-outline" id="btnAddManualImportRow" style="margin-top:10px;">➕ Tambah baris manual</button>`;
-    confirmBtn.style.display = 'inline-flex';
-    updateImportCount();
-  }
-  const manualBtn = document.getElementById('btnAddManualImportRow');
-  if(manualBtn) manualBtn.addEventListener('click', () => {
-    importCandidates.push('');
-    renderImportReview();
-  });
-  wrap.querySelectorAll('.impChk').forEach(chk => chk.addEventListener('change', updateImportCount));
-}
-
-function updateImportCount(){
-  const total = document.querySelectorAll('#importTbody tr').length;
-  const checked = document.querySelectorAll('#importTbody .impChk:checked').length;
-  document.getElementById('importCountLabel').textContent = `${checked} dari ${total} baris akan ditambahkan`;
-}
-
-function resetImportModal(){
-  importCandidates = [];
-  document.getElementById('importFileInput').value = '';
-  document.getElementById('importFileName').textContent = 'Belum ada file dipilih';
-  document.getElementById('importStatus').classList.remove('show');
-  document.getElementById('importReviewWrap').innerHTML = '';
-  document.getElementById('btnConfirmImport').style.display = 'none';
-  document.getElementById('importCountLabel').textContent = '';
-  const rawBox = document.getElementById('importRawBox');
-  if(rawBox) rawBox.remove();
-}
-
-function openImportModal(){
-  resetImportModal();
-  document.getElementById('importOverlay').classList.add('show');
-}
-function closeImportModal(){ document.getElementById('importOverlay').classList.remove('show'); }
-
-async function handleImportFile(file){
-  if(!file) return;
-  if(file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')){ alert('Mohon pilih file PDF.'); return; }
-  document.getElementById('importFileName').textContent = file.name;
-  const statusEl = document.getElementById('importStatus');
-  const statusText = document.getElementById('importStatusText');
-  statusEl.classList.add('show');
-  statusText.textContent = 'Membaca isi PDF...';
-  document.getElementById('importReviewWrap').innerHTML = '';
-  document.getElementById('btnConfirmImport').style.display = 'none';
-  try{
-    const rawText = await extractPdfText(file);
-    statusText.textContent = 'Mendeteksi baris poin (bullet)...';
-    importCandidates = extractCandidateLines(rawText);
-    renderImportReview();
-
-    const wrap = document.getElementById('importReviewWrap');
-    const toggle = document.createElement('div');
-    toggle.className = 'import-raw-toggle';
-    toggle.textContent = '📃 Lihat / salin teks mentah hasil ekstraksi';
-    const rawBox = document.createElement('textarea');
-    rawBox.id = 'importRawBox';
-    rawBox.className = 'import-raw-text';
-    rawBox.readOnly = true;
-    rawBox.value = rawText;
-    toggle.addEventListener('click', () => {
-      rawBox.style.display = rawBox.style.display === 'block' ? 'none' : 'block';
-    });
-    wrap.appendChild(toggle);
-    wrap.appendChild(rawBox);
-  }catch(e){
-    alert('Gagal membaca PDF: ' + e.message);
-  }finally{
-    statusEl.classList.remove('show');
-  }
-}
-
-async function confirmImport(){
-  const rows = document.querySelectorAll('#importTbody tr');
-  let added = 0;
-  rows.forEach(row => {
-    if(!row.querySelector('.impChk').checked) return;
-    const topic = row.querySelector('.impTopic').value.trim();
-    if(!topic) return;
-    entries.push({
-      id: uid(),
-      ticket: nextTicket(),
-      ticketTuring: 'PDF Import',
-      topic,
-      category: row.querySelector('.impCategory').value,
-      detail: row.querySelector('.impDetail').value.trim(),
-      flag: row.querySelector('.impFlag').value,
-      priority: row.querySelector('.impPriority').value,
-      pic: row.querySelector('.impPic').value.trim(),
-      due: row.querySelector('.impDue').value,
-      createdAt: new Date().toISOString()
-    });
-    added++;
-  });
-  if(added === 0){ alert('Tidak ada baris yang dicentang / topic kosong.'); return; }
-  closeImportModal();
-  render();
-  await saveEntries();
-  alert(`✅ ${added} open point berhasil ditambahkan dari PDF dan disimpan ke Google Sheets.`);
-}
-
-document.getElementById('btnImportPdf').addEventListener('click', openImportModal);
-document.getElementById('btnCancelImport').addEventListener('click', closeImportModal);
-document.getElementById('btnConfirmImport').addEventListener('click', confirmImport);
-document.getElementById('importOverlay').addEventListener('click', e => { if(e.target.id === 'importOverlay') closeImportModal(); });
-document.getElementById('importFileInput').addEventListener('change', e => handleImportFile(e.target.files[0]));
-const importDrop = document.getElementById('importDrop');
-importDrop.addEventListener('dragover', e => { e.preventDefault(); importDrop.classList.add('drag'); });
-importDrop.addEventListener('dragleave', () => importDrop.classList.remove('drag'));
-importDrop.addEventListener('drop', e => {
-  e.preventDefault();
-  importDrop.classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  document.getElementById('importFileInput').files = e.dataTransfer.files;
-  handleImportFile(file);
-});
 
 loadEntries();
 </script>
